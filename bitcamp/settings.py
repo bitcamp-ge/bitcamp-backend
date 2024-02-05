@@ -4,6 +4,7 @@ from dotenv import load_dotenv
 load_dotenv()  # Load .env file
 
 PAYZE_API_KEY = os.environ.get('PAYZE_API_KEY')
+POSTMARK_SERVER_TOKEN = os.environ.get('POSTMARK_SERVER_TOKEN')
 
 
 BASE_DIR = Path(__file__).resolve().parent.parent
