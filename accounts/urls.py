@@ -8,6 +8,7 @@ urlpatterns = [
     path("auth/profile", views.CurrentUser.as_view(), name="user"),
     path("auth/profile/update", views.UpdateUser.as_view(), name="updateuser"),
     path("auth/connect-to-discord", views.Discord.as_view(), name="connect-to-discord"),
+    path("auth/reset-password", views.PasswordReset.as_view(), name="reset_password"),
     path("enroll", views.NewEnroll.as_view(), name="enrollment"),
     path("enrollments", views.MyEnrolls.as_view(), name="myenrollments"),
     path('enrollments/<int:id>/check-payze-subscription-status', views.CheckPayzeSubscriptionStatusView.as_view(), name='check-payze-status'),

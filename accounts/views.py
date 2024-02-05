@@ -7,6 +7,12 @@ from rest_framework.views import APIView
 from rest_framework import status
 from django.shortcuts import get_object_or_404
 from drf_spectacular.utils import extend_schema
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from django.contrib.auth.tokens import PasswordResetTokenGenerator
+from django.utils.http import urlsafe_base64_encode
+from django.utils.encoding import force_bytes
+from postmarker.core import PostmarkClient
 from . import serializers, models
 from datetime import datetime, timezone, timedelta
 import requests
@@ -90,6 +96,31 @@ class UpdateUser(APIView):
             return Response(status=status.HTTP_201_CREATED)
 
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+class PasswordReset(APIView):
+    def post(self, request, *args, **kwargs):
+        email = request.data.get("email")
+        user = models.BitCampUser.objects.filter(email=email).first()
+        if user:
+            token_generator = PasswordResetTokenGenerator()
+            token = token_generator.make_token(user)
+            uid = urlsafe_base64_encode(force_bytes(user.pk)).decode()
+
+            reset_url = f"http://localhost:3000/password-reset?token={token}&uid={uid}"
+
+            postmark = PostmarkClient(server_token=settings.POSTMARK_SERVER_TOKEN)
+            try:
+                postmark.emails.send(
+                    From="oto@bitcamp.ge",
+                    To=user.email,
+                    Subject="BitCamp account password reset",
+                    HtmlBody=f"Reset your password by clicking <a href='{reset_url}'>here</a>."
+                )
+                return Response({"message": "Password reset email sent."}, status=200)
+            except Exception as error:
+                return Response({"error": str(error)}, status=500)
+        else:
+            return Response({"error": "User not found."}, status=404)
 
 class Discord(APIView):
     authentication_classes = [TokenAuthentication]
