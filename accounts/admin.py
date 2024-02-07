@@ -1,5 +1,6 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
+from django.utils.translation import gettext_lazy as _
 from . import models
 from django.conf import settings
 import requests
@@ -8,6 +9,33 @@ import requests
 
 admin.site.register(models.Enrollment)
 
+class StatusFilter(admin.SimpleListFilter):
+    title = _('status')  # or use 'verbose_name' of the field
+    parameter_name = 'status'
+
+    def lookups(self, request, model_admin):
+        """
+        Returns a list of tuples. The first element in each tuple is the coded value
+        for the option that will appear in the URL query. The second element is the
+        human-readable name for the option that will appear in the dropdown menu.
+        """
+        return (
+            ('active', _('Active')),
+            ('inactive', _('Inactive')),
+            # Add more status options here
+        )
+
+    def queryset(self, request, queryset):
+        """
+        Returns the filtered queryset based on the value provided in the query string
+        and retrievable via `self.value()`.
+        """
+        if self.value() == 'active':
+            return queryset.filter(status='active')
+        if self.value() == 'inactive':
+            return queryset.filter(status='inactive')
+        # Handle more statuses here
+        
 class PaymentAdmin(admin.ModelAdmin):
     actions = ["process_refund"]
 
@@ -33,7 +61,7 @@ class PaymentAdmin(admin.ModelAdmin):
     list_display = ('id', 'amount', 'status', 'enrollment', 'created_at', 'updated_at')
 
     # Adding filters
-    list_filter = ('status', 'created_at', 'updated_at', 'enrollment')
+    list_filter = (StatusFilter, 'status', 'created_at', 'updated_at', 'enrollment')
 
     # Search functionality (optional, but useful)
     search_fields = ('status', 'enrollment__user__email', 'payze_transactionId', 'payze_paymentId')
