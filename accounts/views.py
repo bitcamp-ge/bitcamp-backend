@@ -5,11 +5,15 @@ from django.http import HttpResponseRedirect
 from rest_framework.authtoken.models import Token
 from rest_framework.views import APIView
 from rest_framework import status
+from django.urls import reverse
+from django.contrib.admin.views.decorators import staff_member_required
 from django.shortcuts import get_object_or_404
 from django.utils.dateparse import parse_date
 from drf_spectacular.utils import extend_schema
 from . import serializers, models
 from datetime import datetime, timezone, timedelta, time
+from content import models as content_models
+from datetime import datetime, timezone, timedelta
 import requests
 from django.conf import settings
 import logging
@@ -555,3 +559,72 @@ class QueryEnrollments(APIView):
                 return Response({"error": "Date parameter is required"}, status=status.HTTP_400_BAD_REQUEST)
         else:
             return Response({"error": "Unauthorized"}, status=status.HTTP_401_UNAUTHORIZED)
+
+@staff_member_required
+def ManualTransaction(request, enrollment_id):
+    enrollment = models.Enrollment.objects.get(id=enrollment_id)
+    if enrollment is None:
+        return HttpResponseRedirect(reverse("admin:index"))
+    
+    service = enrollment.service_id
+    last_payment = models.Payment.objects.filter(enrollment = enrollment_id).latest("created_at")
+    
+    payload = {
+        "source": "Card",
+        # Object of type Decimal is not JSON serializable
+        "amount": service.price.__str__(),
+        "currency": "GEL",
+        "language": "KA",
+        "token": last_payment.token.__str__(),
+        "hooks": {
+            "webhookGateway": "https://platform.bitcamp.ge/payments/payze_hook",
+            "successRedirectGateway": f"https://platform.bitcamp.ge/enrollments/{enrollment.id}/check-payze-subscription-status",
+            "errorRedirectGateway": f"https://platform.bitcamp.ge/enrollments/{enrollment.id}/check-payze-subscription-status"
+        },
+        "metadata": {
+            "extraAttributes": [
+                { "key": "service", "value": service.title },
+                { "key": "email", "value": enrollment.user.email }
+            ]
+        }
+    }
+    headers = {
+        "Accept": "application/*+json",
+        "Content-Type": "application/json",
+        "Authorization": settings.PAYZE_API_KEY,
+        "User-Agent": "python-app/v1"
+    }
+    
+    
+    response = requests.put('https://payze.io/v2/api/payment', json=payload, headers=headers)
+    
+    # Access the response body as JSON
+    response_data = response.text
+    print(f"Response Data: {response_data}")
+    
+    
+    
+    if response.status_code == 200:
+        logger.info("Request sent and response received successfully from Payze")
+        
+        payze_data = response.json()
+        payment = models.Payment.objects.create(
+            enrollment=enrollment,
+            amount=payze_data['data']['payment']['amount'],
+            status=payze_data['data']['payment']['status'],
+            payze_transactionId=payze_data['data']['payment']['transactionId'],
+            payze_paymentId=payze_data['data']['payment']['id'],
+            # ERROR:  null value in column "cardMask" violates not-null constraint. Let's check the response and see if cardMask is null and if so, let's set it to empty string
+            cardMask=payze_data['data']['payment']['cardPayment']['cardMask'] if payze_data['data']['payment']['cardPayment']['cardMask'] is not None else "",
+            token=payze_data['data']['payment']['cardPayment']['token'],
+        )
+        
+        # Save the Payment object
+        logger.info("Saving Payze payment")
+        payment.save()
+        logger.info("Saving Payze payment successful")
+        
+        
+        return HttpResponseRedirect(reverse("admin:accounts_enrollment_change", args=[enrollment_id]), status=status.HTTP_201_CREATED)
+    else:
+        return HttpResponseRedirect(reverse("admin:accounts_enrollment_change", args=[enrollment_id]), status=status.HTTP_400_BAD_REQUEST)
