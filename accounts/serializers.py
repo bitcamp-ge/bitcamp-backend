@@ -33,7 +33,7 @@ class EnrollmentSerializer(serializers.ModelSerializer):
         model = models.Enrollment
         fields = [
             "id", "enrollment_date", "enrollment_cancel_date", "user", 
-            "service_id", "program_id", "mentor_id", "status", 
+            "service_id", "program_id", "mentor_id", "status", "start_payment", "last_payment", 
             "payments", "program", "service"
         ]
 

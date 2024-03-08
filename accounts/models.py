@@ -84,6 +84,16 @@ class Enrollment(models.Model):
     status = models.CharField(
         max_length=16
     )
+    
+    start_payment = models.DateTimeField(
+        null=False,
+        blank=False
+    )
+    
+    last_payment = models.DateTimeField(
+        null=False,
+        blank=False
+    )
 
     payze_subscription_id = models.CharField(
         max_length=255, null=True, blank=True
