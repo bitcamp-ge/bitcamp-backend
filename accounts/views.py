@@ -6,9 +6,10 @@ from rest_framework.authtoken.models import Token
 from rest_framework.views import APIView
 from rest_framework import status
 from django.shortcuts import get_object_or_404
+from django.utils.dateparse import parse_date
 from drf_spectacular.utils import extend_schema
 from . import serializers, models
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timezone, timedelta, time
 import requests
 from django.conf import settings
 import logging
@@ -527,3 +528,30 @@ class DeleteKidsProfile(APIView):
             return Response(status=status.HTTP_204_NO_CONTENT)
         except models.KidsProfile.DoesNotExist:
             return Response({"error": "Profile not found"}, status=status.HTTP_404_NOT_FOUND)
+        
+class QueryEnrollments(APIView):
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [IsAuthenticated]
+    
+    @extend_schema(responses=serializers.EnrollmentSerializer)
+    def get(self, request, **kwargs):
+        user = models.BitCampUser.objects.get(id=request.user.id)
+
+        if user.is_superuser:
+            date_str = request.GET.get("date", None)
+            if date_str:
+                date_obj = parse_date(date_str)
+                if date_obj is None:
+                    return Response({"error": "Invalid date format"}, status=status.HTTP_400_BAD_REQUEST)
+                
+                datetime_obj = datetime.combine(date_obj, time.min)
+
+                users_after_date = models.Enrollment.objects.filter(last_payment__lt=datetime_obj)
+                print(datetime_obj)
+                
+                serializer = serializers.EnrollmentSerializer(users_after_date, many=True)
+                return Response(serializer.data)
+            else:
+                return Response({"error": "Date parameter is required"}, status=status.HTTP_400_BAD_REQUEST)
+        else:
+            return Response({"error": "Unauthorized"}, status=status.HTTP_401_UNAUTHORIZED)
