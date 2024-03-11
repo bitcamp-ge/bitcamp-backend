@@ -532,7 +532,34 @@ class DeleteKidsProfile(APIView):
             return Response(status=status.HTTP_204_NO_CONTENT)
         except models.KidsProfile.DoesNotExist:
             return Response({"error": "Profile not found"}, status=status.HTTP_404_NOT_FOUND)
-        
+
+class UpdateLastPayment(APIView):
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [IsAuthenticated]
+    
+    @extend_schema(responses=serializers.EnrollmentSerializer)
+    def put(self, request, **kwargs):
+        user = models.BitCampUser.objects.get(id=request.user.id)
+
+        if user.is_superuser:
+            enrolment = models.Enrollment.objects.get(id=request.data["id"])
+            serializer = serializers.EnrollmentSerializer(
+                enrolment,
+                data=request.data,
+                partial=True
+            )
+            
+            if serializer.is_valid():
+                serializer.save()
+                return Response(
+                    {"detail": f"Enrolment updated successfully"},
+                    status=status.HTTP_200_OK
+                )
+            
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        else:
+            return Response({"error": "Unauthorized"}, status=status.HTTP_401_UNAUTHORIZED)
+
 class QueryEnrollments(APIView):
     authentication_classes = [TokenAuthentication]
     permission_classes = [IsAuthenticated]
@@ -551,7 +578,6 @@ class QueryEnrollments(APIView):
                 datetime_obj = datetime.combine(date_obj, time.min)
 
                 users_after_date = models.Enrollment.objects.filter(last_payment__lt=datetime_obj)
-                print(datetime_obj)
                 
                 serializer = serializers.EnrollmentSerializer(users_after_date, many=True)
                 return Response(serializer.data)
