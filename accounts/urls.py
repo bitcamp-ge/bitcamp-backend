@@ -17,5 +17,6 @@ urlpatterns = [
     path("kids/deleteprofile", views.DeleteKidsProfile.as_view()),
     
     path("enrollments/query", views.QueryEnrollments.as_view(), name="myenrollments"),
-    path("enrollments/update-last-payment", views.UpdateLastPayment.as_view(), name="update-last-payment")
+    path("enrollments/update-last-payment", views.UpdateLastPayment.as_view(), name="update-last-payment"),
+    path("enrollments/get-enrollment-data", views.GetEnrollmentData.as_view())
 ]

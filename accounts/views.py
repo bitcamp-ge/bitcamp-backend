@@ -13,6 +13,7 @@ from drf_spectacular.utils import extend_schema
 from . import serializers, models
 from datetime import datetime, timezone, timedelta, time
 from content import models as content_models
+from content import serializers as content_serializers
 from datetime import datetime, timezone, timedelta
 import requests
 from django.conf import settings
@@ -654,3 +655,27 @@ def ManualTransaction(request, enrollment_id):
         return HttpResponseRedirect(reverse("admin:accounts_enrollment_change", args=[enrollment_id]), status=status.HTTP_201_CREATED)
     else:
         return HttpResponseRedirect(reverse("admin:accounts_enrollment_change", args=[enrollment_id]), status=status.HTTP_400_BAD_REQUEST)
+
+class GetEnrollmentData(APIView):
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [IsAuthenticated]
+    
+    @extend_schema(responses=serializers.EnrollmentSerializer)
+    def get(self, request, **kwargs):
+        user = models.BitCampUser.objects.get(id=request.user.id)
+
+        if user.is_superuser:
+            id = request.GET.get("id", None)
+            if id:
+                enrolment = models.Enrollment.objects.get(id=id)
+                user = enrolment.user
+                
+                enrolment_data = serializers.EnrollmentSerializer(enrolment)
+                user_data = serializers.BitCampUserSerializer(user).data
+                
+                return Response({
+                    "enrolment": enrolment_data.data,
+                    "user": user_data
+                })
+        else:
+            return Response({"error": "Unauthorized"}, status=status.HTTP_401_UNAUTHORIZED)
