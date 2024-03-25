@@ -91,7 +91,7 @@ class Enrollment(models.Model):
     )
     
     last_payment = models.DateTimeField(
-        null=False,
+        null=True,
         blank=False
     )
 
