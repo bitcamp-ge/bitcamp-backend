@@ -14,5 +14,8 @@ urlpatterns = [
     path("enrollments/<int:id>", views.UpdateEnroll.as_view()),
     path("kids/newprofile", views.NewKidsProfile.as_view()),
     path("kids/getprofiles", views.GetKidsProfile.as_view()),
-    path("kids/deleteprofile", views.DeleteKidsProfile.as_view())
+    path("kids/deleteprofile", views.DeleteKidsProfile.as_view()),
+    
+    path("enrollments/query", views.QueryEnrollments.as_view(), name="myenrollments"),
+    path("enrollments/get-enrollment-data", views.GetEnrollmentData.as_view())
 ]
