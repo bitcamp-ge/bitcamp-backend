@@ -28,6 +28,7 @@ INSTALLED_APPS = [
     
     "accounts",
     "content",
+    "bitcamper",
     
     "django.contrib.admin",
     "django.contrib.auth",
